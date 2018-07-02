@@ -48,7 +48,7 @@ struct arg_struct {
 
    if(client_message[0] == '\0'){
      printf("Got no file descriptor. Exiting. \n" );
-     exit(1);
+     pthread_exit(NULL);
    }
 
 
@@ -71,7 +71,7 @@ struct arg_struct {
       sprintf(message, "COULD NOT OPEN REQUESTED FILE\n");
       write(ClientSockNum , message , strlen(message));
       fclose(fp);
-      exit(1);
+      pthread_exit(NULL);
    }
 
    printf("File opened [ ok ]\n" );
@@ -94,7 +94,7 @@ struct arg_struct {
    }
    fclose(fp);
    close(ClientSockNum);
-   exit(1);
+   pthread_exit(NULL);
 
    return 0;
  }
