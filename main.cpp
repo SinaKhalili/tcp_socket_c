@@ -27,7 +27,8 @@ int main(int argc, const char * argv[]) {
     //server IP address and port number, the client IP address, the filename of the requested file and the size of the send/receive
 
 
-    struct sockaddr_in serverConnect;
+    struct sockaddr_in serverConnect;    
+	struct sockaddr_in6 serverConnect6;
 
     if(argc==6){
         //todo create checks here
@@ -69,6 +70,10 @@ int main(int argc, const char * argv[]) {
             serverConnect.sin_port = htons( serverPort );
             //ipv4 address
             printf("%s is an ipv4 address\n",argv[0]);
+			if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect , sizeof(serverConnect))){
+            	puts("connect error");
+            	return 1;
+        	}
 
         } else if(IPv6Or4->ai_family == AF_INET6) {
             destinationServerSocketNum = socket(AF_INET6 , SOCK_STREAM , 0);
@@ -76,20 +81,24 @@ int main(int argc, const char * argv[]) {
             {
                 cout<<"Could not create socket";
             }
-            struct sockaddr_in serverConnect;
-            serverConnect.sin_addr.s_addr = inet_addr(serverIPAddress);
-            serverConnect.sin_family = AF_INET6;
-            serverConnect.sin_port = htons( serverPort );
+            //struct sockaddr_in6 serverConnect;
+            serverConnect6.sin6_addr.s_addr = inet_addr(serverIPAddress);
+            serverConnect6.sin6_family = AF_INET6;
+            serverConnect6.sin6_port = htons( serverPort );
             printf("%s is an ipv6 address\n",argv[0]);
-        } else {
+			        
+	        if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect6 , sizeof(serverConnect6))){
+	            puts("connect error");
+	            return 1;
+	        }
+		}
+
+		else{
             printf("%s is an is unknown address format %d\n",argv[1],IPv6Or4->ai_family);
         }
 
 
-        if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect , sizeof(serverConnect))){
-            puts("connect error");
-            return 1;
-        }
+
 
         const char *message=  fileName;
 
