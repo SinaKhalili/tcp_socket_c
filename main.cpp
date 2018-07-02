@@ -48,7 +48,7 @@ int main(int argc, const char * argv[]) {
 
         hint.ai_family = PF_UNSPEC;
         hint.ai_flags = AI_NUMERICHOST;
-        int destinationServerSocketNum =NULL;
+        int destinationServerSocketNum = -222;
         returnvalue = getaddrinfo(argv[1], NULL, &hint, &IPv6Or4);
 
 
@@ -134,11 +134,15 @@ int main(int argc, const char * argv[]) {
               return 0;
           }
           // int totalBytesRead = 0;
-          int bytesRead =0;
-            while(bytesRead<=IntNumOfBytes){
-                bytesRead += read(destinationServerSocketNum, receivedBuffer,receiveSize);//change to total byte size
+          //int bytesRead =0;
+          int numPackets = (IntNumOfBytes / receiveSize) + 1;
+          for(int  i = 0; i < numPackets; i++){
+                if(receiveSize > IntNumOfBytes){
+                  receiveSize = IntNumOfBytes;
+                }
+                read(destinationServerSocketNum, receivedBuffer,receiveSize);//change to total byte size
                 fwrite(receivedBuffer, sizeof(char),receiveSize, file);
-                // bytesRead += bytesRead;
+                IntNumOfBytes = IntNumOfBytes - receiveSize;
             }
 
 
