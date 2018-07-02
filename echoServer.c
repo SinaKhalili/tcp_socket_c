@@ -23,55 +23,35 @@ struct arg_struct {
     int mtu;
     int* socket;
 };
-/*------------------------------------------------------------------------
- * Program:   echoserver
- *
- * Purpose:   allocate a TCP and UDP socket and then repeatedly
- *            executes the following:
- *      (1) wait for the next TCP connection or TCP packet or
- *          UDP packet from a client
- *      (2) when accepting a TCP connection a child process is spawned
- *          to deal with the TCP data transfers on that new connection
- *      (2) when a TCP segment arrives it is served by the child process.
- *          The arriving segment is echoed back to the client
- *      (2) when a UDP packet arrives it is echoed back to the client.
- *      (3) when the TCP connection is terminated the child then terminates
- *      (4) go back to step (1)
- *
- * Syntax:    server [[ port ] [buffer size]]
- *
- *       port  - protocol port number to use
- *       buffer size  - MSS of each packet sent
- *
- * Note:      The port argument is optional.  If no port is specified,
- *         the server uses the default given by PROTOPORT.
- *
- *------------------------------------------------------------------------
 
 
- */
  void *file_sender(void *arguments) {
+   printf("Stated thread to hand connection [ ok ]\n" );
    //Get the socket descriptor
    struct arg_struct *args = arguments;
    int ClientSockNum = *(int*) args->socket;
    int read_size;
    int mtu = args->mtu;
-   char *message;
+   char message[500];
    char client_message[2000];
+   printf("MTU is : %d \n", mtu );
 
-   //Send some messages to the client
-   message = "Greetings! I am your connection handler\n";
-   write(ClientSockNum , message , strlen(message));
+   //Send some messages to the client%
+
 
 
 
    //Receive a message from client
    read_size = recv(ClientSockNum , client_message , 2000 , 0);
 
+   printf("Got : %s \n", client_message);
 
-   message = "Looking for file... \n";
-   write(ClientSockNum , message , strlen(message));
-   write(ClientSockNum , client_message , strlen(client_message));
+   if(client_message[0] == '\0'){
+     printf("Got no file descriptor. Exiting. \n" );
+     exit(1);
+   }
+
+
 
 
    if(read_size == 0)
@@ -85,24 +65,31 @@ struct arg_struct {
    }
 
    FILE* fp = fopen( client_message, "r");
-
+   printf("Opening requested file \n");
    if (fp == NULL) {
-      message = "COULD NOT OPEN REQUESTED FILE\n";
+     printf("File pointer is null [ dead ]\n" );
+      sprintf(message, "COULD NOT OPEN REQUESTED FILE\n");
       write(ClientSockNum , message , strlen(message));
       fclose(fp);
       exit(1);
    }
 
+   printf("File opened [ ok ]\n" );
    fseek(fp, 0L, SEEK_END);
    long sz = ftell(fp);
    rewind(fp);
-   sprintf(message, "Size of your file is %ld \n", sz);
+   printf("Size of your file is %ld \n", sz);
+   sprintf(message, "%ld", sz);
    write(ClientSockNum , message , strlen(message));
-   //TODO: Set mtu
+   printf("Sent file size [ ok ]\n" );
    long numPackets = (sz / mtu) + 1;
+   printf("Packets needed to send file : %ld \n",numPackets );
    char * fileReturn = malloc(sizeof(char)*(mtu+1));
+   printf("Made buffer to send file in segments [ ok ]\n" );
    for(int i = 0; i < numPackets; i++){
-     size_t newLen = fread(fileReturn, sizeof(char), mtu+1, fp);
+     printf("Begin sending packet %d \n", i);
+     size_t newLen = fread(fileReturn, sizeof(char), mtu, fp);
+     printf("Put in %ld bytes into packet \n", newLen);
      write(ClientSockNum , fileReturn , strlen(fileReturn));
    }
    fclose(fp);
@@ -206,10 +193,13 @@ int main(int argc, char const *argv[]) {
       fprintf(stderr, "tcp socket creation failed\n");
       exit(1);
    }
+   printf("Created ipv4 socket [ ok ]\n");
    if (tcpsd6 < 0) {
       fprintf(stderr, "tcp6 socket creation failed\n");
       exit(1);
    }
+   printf("Created ipv6 socket [ ok ]\n");
+
    if (bind(tcpsd, (struct sockaddr *)&sad, sizeof(sad)) < 0) {
       fprintf(stderr,"tcp bind failed\n");
       close(tcpsd);
@@ -220,6 +210,8 @@ int main(int argc, char const *argv[]) {
       close(tcpsd);
       exit(1);
    }
+   printf("Bind And listen ipv4 socket [ ok ]\n");
+
    if (bind(tcpsd6, (struct sockaddr *)&sad6, sizeof(sad6)) < 0) {
       fprintf(stderr,"tcp6 bind failed\n");
       close(tcpsd6);
@@ -230,6 +222,7 @@ int main(int argc, char const *argv[]) {
       close(tcpsd6);
       exit(1);
    }
+   printf("Bind And listen ipv6 socket [ ok ]\n");
 
    connfd = -222;
    connfd6 = -222;
@@ -237,18 +230,20 @@ int main(int argc, char const *argv[]) {
           (connfd6 = accept(tcpsd6, (struct sockaddr *)&cad6, &len))){
             puts("Connection accepted");
             //Reply to the client
-             message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
 
             pthread_t sniffer_thread;
             if(connfd == -222){
-              write(connfd6 , message , strlen(message));
+              printf("This is a ipv6 connection ... \n" );
               new_sock = malloc(1);
               *new_sock = connfd6;
+              mtu = argc > 1 ? atoi(argv[3]) : 1280 ;
             }
             if(connfd6 == -222){
-              write(connfd , message , strlen(message));
+              printf("This is a ipv4 connection ... \n" );
               new_sock = malloc(1);
               *new_sock = connfd;
+              mtu = argc > 1 ? atoi(argv[3]) : 1440;
+              printf("Created new socket to pass to thread [ ok ]\n" );
             }
 
 
@@ -262,8 +257,8 @@ int main(int argc, char const *argv[]) {
                   return 1;
               }
 
-              pthread_join( sniffer_thread, NULL);
               puts("thread assigned");
+              pthread_join( sniffer_thread, NULL);
 
               connfd = -222;
               connfd6 = -222;
