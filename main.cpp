@@ -1,11 +1,3 @@
-//
-//  main.cpp
-//  dualStackClient
-//
-//  Created by jimmy zhong on 2018-06-28.
-//  Copyright © 2018 jimmy zhong. All rights reserved.
-//
-
 #include <iostream>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -24,10 +16,11 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
+    printf("Begin trying to connect \n" );
     //server IP address and port number, the client IP address, the filename of the requested file and the size of the send/receive
 
 
-    struct sockaddr_in serverConnect;    
+    struct sockaddr_in serverConnect;
 	struct sockaddr_in6 serverConnect6;
 
     if(argc==6){
@@ -65,12 +58,13 @@ int main(int argc, const char * argv[]) {
             {
                 cout<<"Could not create socket";
             }
-            serverConnect.sin_addr.s_addr = inet_addr(serverIPAddress);
+            //serverConnect.sin_addr.s_addr = inet_addr(serverIPAddress);
+            inet_pton(AF_INET, serverIPAddress, &(serverConnect.sin_addr.s_addr));
             serverConnect.sin_family = AF_INET;
             serverConnect.sin_port = htons( serverPort );
             //ipv4 address
             printf("%s is an ipv4 address\n",argv[0]);
-			if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect , sizeof(serverConnect))){
+			    if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect , sizeof(serverConnect))){
             	puts("connect error");
             	return 1;
         	}
@@ -82,11 +76,15 @@ int main(int argc, const char * argv[]) {
                 cout<<"Could not create socket";
             }
             //struct sockaddr_in6 serverConnect;
-            serverConnect6.sin6_addr.s_addr = inet_addr(serverIPAddress);
+            int convertToV6 = inet_pton(AF_INET6, serverIPAddress, &(serverConnect6.sin6_addr.s6_addr));
+            if(convertToV6 != 1){
+              printf("%s is an is unknown address format %d\n",argv[1],IPv6Or4->ai_family);
+              return 1;
+            }
             serverConnect6.sin6_family = AF_INET6;
             serverConnect6.sin6_port = htons( serverPort );
             printf("%s is an ipv6 address\n",argv[0]);
-			        
+
 	        if(connect(destinationServerSocketNum, (struct sockaddr *)&serverConnect6 , sizeof(serverConnect6))){
 	            puts("connect error");
 	            return 1;
@@ -96,10 +94,6 @@ int main(int argc, const char * argv[]) {
 		else{
             printf("%s is an is unknown address format %d\n",argv[1],IPv6Or4->ai_family);
         }
-
-
-
-
         const char *message=  fileName;
 
         if( send(destinationServerSocketNum , message , strlen(message) , 0) < 0)
@@ -114,6 +108,7 @@ int main(int argc, const char * argv[]) {
         char * serverReply = 0;
         serverReply = new char[2000];
         int firstLineRead;
+        printf("Waiting for server to send file size...\n");
         do{
           firstLineRead = read(destinationServerSocketNum, serverReply,100);
         } while(firstLineRead <= 1);
@@ -121,25 +116,27 @@ int main(int argc, const char * argv[]) {
 
         printf("server sends : %s \n", serverReply );
 
-        printf("Trying to make string \n" );
-        printf("server's fourth letter is  : %c \n", serverReply[3] );
-
         bool hasNum = false;
         char *NumOfBytes;
-        long IntNumOfBytes = atoi(serverReply);
+        long IntNumOfBytes = atoi(serverReply + 13);
+        if(IntNumOfBytes == 0){
+          printf("File doesn't exist. Cleaning and terminating.\n");
+          exit(1);
+        }
         printf("FILE IS OF SIZE : %ld  [ recv ]\n", IntNumOfBytes);
         //TODO : FILE DOENS'T EXIST
+
         /*if(hasNum ==true){
             if(atoi(NumOfBytes)!=0){
                 IntNumOfBytes = atoi(NumOfBytes);
             }
           }*/
-          printf("About to create file : \n");
-          FILE* file = fopen("outputfile.txt", "a+" );
+          printf("About to create file [ ok ] \n");
+          FILE* file = fopen(fileName, "a+" );
 
 
           if(file ==NULL){
-              cout<<"could not open file";
+              cout<<"COULD NOT OPEN OUTPUT FILE";
               return 0;
           }
           // int totalBytesRead = 0;
@@ -153,80 +150,15 @@ int main(int argc, const char * argv[]) {
                 fwrite(receivedBuffer, sizeof(char),receiveSize, file);
                 IntNumOfBytes = IntNumOfBytes - receiveSize;
             }
+            printf("File copied in full [ ok ] \n");
 
 
-            //read read from socket another byte stream
-            //read that many bytes from the socket.
-            //into a buffer,
-            //or into the file directly.
-
-
-        // else{
-        //     cout<< "The server could not Open file";
-        //     return 0;
-        // }
-
-        //for lenghth of server reply get the number inside. if serverReply
-        //is digit->
-        //flag,
-        //loop
-        //append
-        //string cat append that digit.
-        //
-        //at atoi it.
-
-
-
-
-
-        //read that total size into a buffer of that size.
-        //write that into a file.
-
-
-
-        //
-        //receive buffer of max size to be read into.
-
-
-        //fwrite( array, 1, 100, file );
-
-        // receive extract into buffer of max size from command line.
-        // if its ok
-
-        // create file with name name
-        // if cannot open send message cannot open.
-
-        //if ok write it all to a file.
-
-
-        //packet will contain a message. extract that number of bytes
-
-        //read
-        //write the received data->> all of it into a file
-        //
-                 //create and open a file for this
-        puts("Reply received\n");
-
-
-
-        ///send some data
-        //
-        //to write to the file need that.
-
-        // possibly needs to convert to bytes..
-
-
+        puts("Finished transmission. \n");
 
     }else{
         std::cout<<"incorrect number of arguments";
         return 0;
     }
-
-    //create the sockets and bind them
-    // send and parse the filename into a get request
-
-    // listen for a response.
-
 
     return 0;
 }

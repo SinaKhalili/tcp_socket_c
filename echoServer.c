@@ -21,7 +21,8 @@ int   visits       =   0;      /* counts client connections              */
 
 struct arg_struct {
     int mtu;
-    int* socket;
+    int socket_n;
+    int *socket;
 };
 
 
@@ -67,10 +68,9 @@ struct arg_struct {
    FILE* fp = fopen( client_message, "r");
    printf("Opening requested file \n");
    if (fp == NULL) {
-     printf("File pointer is null [ dead ]\n" );
+      printf("File pointer is null [ dead ]\n" );
       sprintf(message, "COULD NOT OPEN REQUESTED FILE\n");
       write(ClientSockNum , message , strlen(message));
-      fclose(fp);
       pthread_exit(NULL);
    }
 
@@ -79,7 +79,7 @@ struct arg_struct {
    long sz = ftell(fp);
    rewind(fp);
    printf("Size of your file is %ld \n", sz);
-   sprintf(message, "%ld", sz);
+   sprintf(message, "FILE SIZE IS %ld bytes", sz);
    write(ClientSockNum , message , strlen(message));
    printf("Sent file size [ ok ]\n" );
    long numPackets = (sz / mtu) + 1;
@@ -99,6 +99,31 @@ struct arg_struct {
    return 0;
  }
 
+ void * acceptThread(void* arguments){
+   struct arg_struct *args = arguments;
+   int tcpsd = args->socket_n;
+   int mtu = args->mtu;
+   int * new_sock = malloc(1);
+   int connfd;
+
+   while( connfd = accept(tcpsd, NULL, NULL)){
+
+     *new_sock = connfd;
+     pthread_t sniffer_thread;
+     struct arg_struct argsT;
+     argsT.mtu = mtu;
+     argsT.socket = new_sock;
+     if( pthread_create( &sniffer_thread , NULL ,  file_sender , (void*) &argsT ) < 0)
+       {
+           perror("could not create thread");
+            pthread_exit(NULL);
+       }
+
+     pthread_join( sniffer_thread, NULL);
+
+   }
+
+ }
 
 int main(int argc, char const *argv[]) {
 
@@ -137,7 +162,7 @@ int main(int argc, char const *argv[]) {
    tcpcharcntin = 0;
    tcpcharcntout = 0;
    memset((char *)&sad,0,sizeof(sad)); /* clear sockaddr structure      */
-   memset((char *)&sad,0,sizeof(sad6)); /* clear sockaddr structure      */
+   memset((char *)&sad6,0,sizeof(sad6)); /* clear sockaddr structure      */
    memset((char *)&cad,0,sizeof(cad)); /* clear sockaddr structure      */
    sad.sin_family = AF_INET;           /* set family to Internet        */
    sad.sin_addr.s_addr = INADDR_ANY;   /* set the local IP address      */
@@ -172,6 +197,7 @@ int main(int argc, char const *argv[]) {
    }
    if (port6 > 0) {
      sad6.sin6_port = htons((u_short)port6);
+     sad6.sin6_addr = in6addr_any;
    }
    else {
       fprintf(stderr,"bad port number/s %s\n",argv[1]);
@@ -188,6 +214,8 @@ int main(int argc, char const *argv[]) {
 
    tcpsd = socket(AF_INET, SOCK_STREAM, 0);
    tcpsd6 = socket(AF_INET6, SOCK_STREAM, 0);
+   int flag = 1;
+   setsockopt(tcpsd6, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(int));
 
    if (tcpsd < 0) {
       fprintf(stderr, "tcp socket creation failed\n");
@@ -224,44 +252,27 @@ int main(int argc, char const *argv[]) {
    }
    printf("Bind And listen ipv6 socket [ ok ]\n");
 
-   connfd = -222;
-   connfd6 = -222;
-   while( (connfd = accept(tcpsd, (struct sockaddr *)&cad, &len)) ||
-          (connfd6 = accept(tcpsd6, (struct sockaddr *)&cad6, &len))){
-            puts("Connection accepted");
-            //Reply to the client
+    pthread_t ipv4_blocker;
+    pthread_t ipv6_blocker;
+    struct arg_struct args4;
+    args4.mtu = argc > 1 ? atoi(argv[3]) : 1440;
+    args4.socket_n = tcpsd;
+    if( pthread_create( &ipv4_blocker , NULL ,  acceptThread , (void*) &args4  ) < 0)
+      {
+          perror("could not create thread");
+          return 1;
+      }
 
-            pthread_t sniffer_thread;
-            if(connfd == -222){
-              printf("This is a ipv6 connection ... \n" );
-              new_sock = malloc(1);
-              *new_sock = connfd6;
-              mtu = argc > 1 ? atoi(argv[3]) : 1280 ;
-            }
-            if(connfd6 == -222){
-              printf("This is a ipv4 connection ... \n" );
-              new_sock = malloc(1);
-              *new_sock = connfd;
-              mtu = argc > 1 ? atoi(argv[3]) : 1440;
-              printf("Created new socket to pass to thread [ ok ]\n" );
-            }
+    struct arg_struct args6;
+    args6.mtu = argc > 1 ? atoi(argv[3]) : 1280;
+    args6.socket_n = tcpsd6;
+    if( pthread_create( &ipv6_blocker , NULL ,  acceptThread , (void*) &args6)  < 0)
+      {
+          perror("could not create thread");
+          return 1;
+      }
 
-
-            struct arg_struct args;
-            args.mtu = mtu;
-            args.socket = new_sock;
-
-            if( pthread_create( &sniffer_thread , NULL ,  file_sender , (void*) &args ) < 0)
-              {
-                  perror("could not create thread");
-                  return 1;
-              }
-
-              puts("thread assigned");
-              pthread_join( sniffer_thread, NULL);
-
-              connfd = -222;
-              connfd6 = -222;
-          }
+    pthread_join( ipv4_blocker, NULL);
+    pthread_join( ipv6_blocker, NULL);
 
 }
