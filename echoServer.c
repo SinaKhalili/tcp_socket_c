@@ -87,6 +87,7 @@ struct arg_struct {
    char * fileReturn = malloc(sizeof(char)*(mtu+1));
    printf("Made buffer to send file in segments [ ok ]\n" );
    for(int i = 0; i < numPackets; i++){
+     sleep(1);
      printf("Begin sending packet %d \n", i);
      size_t newLen = fread(fileReturn, sizeof(char), mtu, fp);
      printf("Put in %ld bytes into packet \n", newLen);

@@ -23,7 +23,15 @@ int main(int argc, const char * argv[]) {
     struct sockaddr_in serverConnect;
 	struct sockaddr_in6 serverConnect6;
 
-    if(argc==6){
+    if(argc==6 || argc==0){
+        if(argc == 0){
+          const char* serverIPAddress = "localhost";
+          int serverPort = "33455";
+          const char * clientIP = "123";
+          const char * fileName = "fileToTransfer";
+          int receiveSize = atoi(argv[5]);
+          char * receivedBuffer[receiveSize];
+        }
         //todo create checks here
         const char* serverIPAddress = argv[1];
         int serverPort = atoi(argv[2]);
