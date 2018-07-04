@@ -16,28 +16,29 @@
 using namespace std;
 
 int main(int argc, const char * argv[]) {
-    printf("Begin trying to connect \n" );
     //server IP address and port number, the client IP address, the filename of the requested file and the size of the send/receive
 
 
-    struct sockaddr_in serverConnect;
-	struct sockaddr_in6 serverConnect6;
+     struct sockaddr_in serverConnect;
+	   struct sockaddr_in6 serverConnect6;
 
-    if(argc==6 || argc==0){
-        if(argc == 0){
-          const char* serverIPAddress = "localhost";
-          int serverPort = "33455";
-          const char * clientIP = "123";
-          const char * fileName = "fileToTransfer";
-          int receiveSize = atoi(argv[5]);
-          char * receivedBuffer[receiveSize];
+    if(argc==6 || argc==1){
+        if(argc == 1){
+          printf("Please enter options in the following order: \n");
+          printf("The IP address of the server you wish to reach (default : localhost)\n");
+          printf("The port you wish to send on. (default : 33455)\n");
+          printf("Your IP  (default : 127.0.0.1)\n");
+          printf("The name of the file you wish to have. (default: fileToTransfer)\n");
+          printf("The size of the packets you wish to have (default: 1440)\n");
+          printf("To use a default value put a . (dot) for that argument\n");
+          printf("\n");
+          return 1;
         }
         //todo create checks here
-        const char* serverIPAddress = argv[1];
-        int serverPort = atoi(argv[2]);
-        const char * clientIP =argv[3];
-        const char * fileName = argv[4];
-        int receiveSize = atoi(argv[5]);
+        const char* serverIPAddress = strcmp(argv[1],".") == 0? "127.0.0.1" : argv[1];
+        int serverPort = strcmp(argv[2],".") == 0? atoi("33455") : atoi(argv[2]);
+        const char * fileName = argv[4] == "." ? "fileToTransfer" : argv[4];
+        int receiveSize = argv[5] == "." ? atoi("1440"): atoi(argv[5]);
         char * receivedBuffer[receiveSize];
         //logic to know if its ipv4 or ipv6
         //int destinationServerSocketNum = socket(AF_INET , SOCK_STREAM , 0);
@@ -51,7 +52,7 @@ int main(int argc, const char * argv[]) {
         hint.ai_family = PF_UNSPEC;
         hint.ai_flags = AI_NUMERICHOST;
         int destinationServerSocketNum = -222;
-        returnvalue = getaddrinfo(argv[1], NULL, &hint, &IPv6Or4);
+        returnvalue = getaddrinfo(serverIPAddress, NULL, &hint, &IPv6Or4);
 
 
         if (returnvalue) {

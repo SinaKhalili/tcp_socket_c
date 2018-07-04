@@ -171,11 +171,19 @@ int main(int argc, char const *argv[]) {
    sad6.sin6_family = AF_INET6;
    cad.sin_family = AF_INET;          /* set family to Internet         */
    cad6.sin6_family = AF_INET6;          /* set family to Internet         */
-//TODO: make more error checks
-   if ( (argc > 1)) {
-       port =  atoi(argv[1]);
-       port6 = atoi(argv[2]);
-       mtu = atoi(argv[3]);
+
+   if(argc != 4){
+     printf("Please enter options in the following order: \n");
+     printf("The ipv4 port for this server (default : 33455)\n");
+     printf("The ipv6 port for this server (default : 33446)\n");
+     printf("The packet size (mtu) for this server (default : 1440)\n");
+     printf("To use a default value put a . (dot) for that argument\n");
+     return 1;
+   }
+   else {
+       port = strcmp(argv[1], ".") == 0? 33455 : atoi(argv[1]);
+       port6 = strcmp(argv[2], ".") == 0? 33446 : atoi(argv[2]);
+       mtu = strcmp(argv[3], ".") == 0? 1440 : atoi(argv[3]);
    }
 
 
